@@ -1,0 +1,5 @@
+nohup jupyter-notebook --ip=172.23.219.12 --notebook-dir=/exportfs/home/gongxin1/py_jobs/>~/jupyter.log 2>&1 &
+
+jupyter-notebook list
+
+http://172.23.219.12:8889/?token=355ff517ae0f966afeb5230a9565fc7b5ef08941f24955dd :: /exportfs/home/gongxin1/py_jobs

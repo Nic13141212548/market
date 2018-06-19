@@ -1,0 +1,112 @@
+desc dws.dws_insu_valid_ordr_det_jf_s_d
+
+
+
+--------------用户近一年消费时间间隔
+drop table dev_tmp.dev_tmp_rfm_ins_s_yelei_02;
+create table if not exists dev_tmp.dev_tmp_rfm_ins_s_yelei_02 as 
+select  num,count(distinct user_pin) num1 from 
+(select user_pin,abs(avg(datediff(t1.ordr_time,t1.lead_time))) num from 
+(select user_pin
+        ,ordr_time
+        ,lead(ordr_time,1,'2018-06-01') OVER (PARTITION BY user_pin ORDER BY ordr_time desc) lead_time
+from dws.dws_insu_valid_ordr_det_jf_s_d where dt='2018-05-31'
+and (ordr_status ='3' or ordr_status is null)
+and ordr_time>='2017-06-01'
+and ordr_time<='2018-05-31'
+and biz_id='5000'              --取其中的一个险
+) t1
+where  t1.lead_time <> '2018-06-01'
+group by t1.user_pin
+) t2
+group by num;
+
+--------------用户最近两次消费间隔时间分布
+drop table dev_tmp.dev_tmp_rfm_ins_s_yelei_01;
+create table if not exists dev_tmp.dev_tmp_rfm_ins_s_yelei_01 as 
+select  num,count(distinct user_pin) num1 from 
+(select user_pin,abs(datediff(lead_time,ordr_time)) num from 
+(select user_pin
+        ,ordr_time
+        ,lead(ordr_time,1,'2018-06-01') OVER (PARTITION BY user_pin ORDER BY ordr_time desc) lead_time
+        ,row_number() OVER (PARTITION BY user_pin ORDER BY ordr_time desc) rn 
+from dws.dws_insu_valid_ordr_det_jf_s_d where dt='2018-05-31'
+and (ordr_status ='3' or ordr_status is null)
+and ordr_time>='2017-06-01'
+and ordr_time<='2018-05-31'
+and biz_id='5000') t1
+where t1.rn=1 and t1.lead_time <> '2018-06-01'
+) t2
+group by num;
+
+select num,num1,sum,sum/sum_all from 
+(select num,num1,sum(num1) over(order by num) as sum from dev_tmp.dev_tmp_rfm_ins_s_yelei_02 group by num) t1
+where sum/sum_all>=0.9
+order by num;
+
+--最后结果往前推观察时间往前推150天能够覆盖90%以上的用户。
+
+知道该取什么样的数据，就把数据取出来
+
+RFM改怎么去取   
+R:取  max(ordr_time)到
+
+drop table dev_tmp.dev_tmp_rfm_ins_s_yelei_03;
+create table if not exists dev_tmp.dev_tmp_rfm_ins_s_yelei_03 as 
+select user_pin as user_pin 
+      ,abs(datediff('2018-05-31',max(ordr_time)))  as  loan_time
+      ,count (distinct ordr_id) as loan_times 
+      ,sum(ordr_amt) as amt 
+from dws.dws_insu_valid_ordr_det_jf_s_d where dt='2018-05-31'
+and (ordr_status ='3' or ordr_status is null)
+and ordr_time>='2018-01-01'         --这个时间区间包含了过年,是不是要考虑方法消除影响。
+and ordr_time<='2018-05-31'
+and biz_id='5000'
+group by user_pin;
+
+
+
+
+
+#取随机一万条  87764375
+drop table dev_tmp.dev_tmp_rfm_ins_s_yelei_04;
+create table if not exists dev_tmp.dev_tmp_rfm_ins_s_yelei_04 as 
+select * from (
+select user_pin,loan_time,loan_times,amt,cast(rand()*100000000 as int) as vidx from dev_tmp.dev_tmp_rfm_ins_s_yelei_03 where amt>0) t2
+order by t2.vidx limit 1000;
+
+#逗号分隔
+drop table dev_tmp.dev_tmp_rfm_ins_s_yelei_05;
+create table if not exists dev_tmp.dev_tmp_rfm_ins_s_yelei_05(
+        user_pin string
+       ,loan_time string
+       ,loan_times int 
+       ,amt double 
+      ,vidx int
+) row format delimited fields terminated by '\t';
+
+insert overwrite table dev_tmp.dev_tmp_rfm_ins_s_yelei_05 
+select * from dev_tmp.dev_tmp_rfm_ins_s_yelei_04;
+
+#导出数据
+#先进入自己的目录
+hive -e "select * from dev_tmp.dev_tmp_rfm_ins_s_yelei_05" >> yelei.txt
+
+awk -F "\t" '{OFS=",";$1=$1;print$0}' yelei.txt>yelei01.txt
+
+cat 日志目录
+
+
+#处理异常值数据
+
+
+
+
+
+
+
+#处理极值数据
+
+
+
+

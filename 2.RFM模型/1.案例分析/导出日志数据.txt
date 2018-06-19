@@ -1,0 +1,55 @@
+数据量一共是 17,531,592
+
+-- 取白条交易数据并打标
+
+
+drop table  if exists dev_tmp.dev_tmp_bt_rfm_model_s_d;
+create table if not exists dev_tmp.dev_tmp_bt_rfm_model_s_d as 
+select 
+ cast(rand() * 100000000 as int) as id,
+ a.user_pin user_pin,
+ a.last_loan_time last_loan_time ,
+ a.loan_times loan_times,
+ a.amount amount,
+ a.loan_term_amount loan_term_amount,
+ a.loan_term_rate loan_term_rate,
+ b.min_loan_time min_loan_time 
+ from
+(select 
+user_pin,
+max(loan_time) last_loan_time,
+count(distinct ordr_id) loan_times,
+sum(loan_prin-refund_prin) amount,
+sum(case when loan_term > 1 then loan_prin-refund_prin else 0 end) loan_term_amount,
+nvl(sum(recvbl_stag_fee)/sum(case when loan_term > 1 then loan_prin-refund_prin else 0 end),0) loan_term_rate
+from dwb.dwb_bt_xbt_ordr_det_s_d
+where dt = '2018-06-01'
+and substr(loan_time,1,10)>='2018-03-01' 
+and substr(loan_time,1,10)<='2018-05-31'
+and biz_id <> '32'  
+and loan_prin-refund_prin > 0
+group by user_pin
+) a 
+left join 
+(
+select distinct 
+user_pin,
+loan_time min_loan_time 
+from dwb.dwb_bt_xbt_ordr_det_s_d
+where dt = '2018-06-01' 
+and is_first <> '0'
+and biz_id <> '32' 
+) b 
+on a.user_pin = b.user_pin;
+
+--取其中的一百五十万条数据导出数据日志
+
+
+
+
+--将表中数据导入txt
+hive -e "select * from dev_tmp.dev_tmp_bt_rfm_model_s_d order by id limit 1000000;"> yl01.txt
+--将分隔符置为“,”
+awk -F "\t" '{OFS=",";$1=$1;print$0}' yl01.txt>yl011.txt
+
+cat yl011.txt
