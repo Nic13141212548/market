@@ -14,7 +14,7 @@ In order to set a constant number of reducers:
 Starting Job = job_1519716207815_5591899, Tracking URL = http://hadoop-jr-nn02.pekdc1.jdfin.local:8088/proxy/application_1519716207815_5591899/
 Kill Command = /soft/hadoop/bin/hadoop job  -kill job_1519716207815_5591899
 Hadoop job information for Stage-1: number of mappers: 153; number of reducers: 20
-2018-06-07 13:35:42,492 Stage-1 map = 0%,  reduce = 0%
+2018-06-07 13:35:42,492 Stage-1 map = 0%,  reduce = 0%   
 2018-06-07 13:36:57,186 Stage-1 map = 0%,  reduce = 0%
 2018-06-07 13:37:07,580 Stage-1 map = 3%,  reduce = 0%, Cumulative CPU 14.58 sec
 2018-06-07 13:37:08,621 Stage-1 map = 8%,  reduce = 0%, Cumulative CPU 46.77 sec
